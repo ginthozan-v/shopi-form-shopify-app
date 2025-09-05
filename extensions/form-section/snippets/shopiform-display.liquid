@@ -1,0 +1,373 @@
+{% comment %}
+  ShopiForm Display Snippet
+  Usage: {% render 'shopiform-display', form_id: 'your-form-id', heading: 'Optional Heading', description: 'Optional Description' %}
+{% endcomment %}
+
+<div class="shopiform-wrapper" data-form-id="{{ form_id }}">
+  {% if heading != blank %}
+    <h2 class="shopiform-heading">{{ heading }}</h2>
+  {% endif %}
+  
+  {% if description != blank %}
+    <div class="shopiform-description">
+      {{ description | newline_to_br }}
+    </div>
+  {% endif %}
+  
+  {% if form_id != blank %}
+    <div id="shopiform-{{ form_id }}" class="shopiform-form-container">
+      <div class="shopiform-loading">Loading form...</div>
+    </div>
+  {% else %}
+    <div class="shopiform-placeholder">
+      <p>Form ID is required to display the form.</p>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+(function() {
+  const formId = '{{ form_id }}';
+  const container = document.getElementById('shopiform-' + formId);
+  const shop = '{{ shop.permanent_domain }}';
+  
+  if (formId && container) {
+    // Fetch form data from the app
+    fetch(`https://${shop}/apps/shopi-form/api/forms/${formId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.form) {
+          renderForm(data.form, container);
+        } else {
+          container.innerHTML = '<p class="shopiform-error">Form not found.</p>';
+        }
+      })
+      .catch(error => {
+        console.error('Error loading form:', error);
+        container.innerHTML = '<p class="shopiform-error">Error loading form. Please try again later.</p>';
+      });
+  }
+
+  function renderForm(form, container) {
+    let formHtml = `
+      <form class="shopiform-form" data-form-id="${form.id}" onsubmit="submitShopiForm(event, this)">
+        ${form.description ? `<p class="shopiform-form-description">${form.description}</p>` : ''}
+    `;
+    
+    form.fields.forEach(field => {
+      formHtml += renderField(field);
+    });
+    
+    formHtml += `
+        <button type="submit" class="shopiform-submit-btn">Submit</button>
+      </form>
+    `;
+    
+    container.innerHTML = formHtml;
+  }
+
+  function renderField(field) {
+    const required = field.required ? 'required' : '';
+    const requiredLabel = field.required ? ' *' : '';
+    
+    switch (field.type) {
+      case 'text':
+      case 'email':
+      case 'phone':
+        return `
+          <div class="shopiform-field">
+            <label class="shopiform-label" for="field-${field.id}">
+              ${field.label}${requiredLabel}
+            </label>
+            <input 
+              type="${field.type === 'phone' ? 'tel' : field.type}" 
+              id="field-${field.id}" 
+              name="field-${field.id}" 
+              placeholder="${field.placeholder || ''}"
+              class="shopiform-input"
+              ${required}
+            />
+          </div>
+        `;
+      
+      case 'textarea':
+        return `
+          <div class="shopiform-field">
+            <label class="shopiform-label" for="field-${field.id}">
+              ${field.label}${requiredLabel}
+            </label>
+            <textarea 
+              id="field-${field.id}" 
+              name="field-${field.id}" 
+              placeholder="${field.placeholder || ''}"
+              class="shopiform-textarea"
+              rows="4"
+              ${required}
+            ></textarea>
+          </div>
+        `;
+      
+      case 'select':
+        let selectHtml = `
+          <div class="shopiform-field">
+            <label class="shopiform-label" for="field-${field.id}">
+              ${field.label}${requiredLabel}
+            </label>
+            <select id="field-${field.id}" name="field-${field.id}" class="shopiform-select" ${required}>
+              <option value="">Choose an option</option>
+        `;
+        if (field.options) {
+          field.options.forEach(option => {
+            selectHtml += `<option value="${option}">${option}</option>`;
+          });
+        }
+        selectHtml += `</select></div>`;
+        return selectHtml;
+      
+      case 'radio':
+        let radioHtml = `
+          <div class="shopiform-field">
+            <fieldset class="shopiform-fieldset">
+              <legend class="shopiform-legend">${field.label}${requiredLabel}</legend>
+        `;
+        if (field.options) {
+          field.options.forEach((option, index) => {
+            radioHtml += `
+              <div class="shopiform-radio-option">
+                <input 
+                  type="radio" 
+                  id="field-${field.id}-${index}" 
+                  name="field-${field.id}" 
+                  value="${option}"
+                  class="shopiform-radio"
+                  ${required}
+                />
+                <label class="shopiform-radio-label" for="field-${field.id}-${index}">
+                  ${option}
+                </label>
+              </div>
+            `;
+          });
+        }
+        radioHtml += `</fieldset></div>`;
+        return radioHtml;
+      
+      case 'checkbox':
+        return `
+          <div class="shopiform-field">
+            <div class="shopiform-checkbox-wrapper">
+              <input 
+                type="checkbox" 
+                id="field-${field.id}" 
+                name="field-${field.id}" 
+                value="checked"
+                class="shopiform-checkbox"
+                ${required}
+              />
+              <label class="shopiform-checkbox-label" for="field-${field.id}">
+                ${field.label}${requiredLabel}
+              </label>
+            </div>
+          </div>
+        `;
+      
+      case 'date':
+        return `
+          <div class="shopiform-field">
+            <label class="shopiform-label" for="field-${field.id}">
+              ${field.label}${requiredLabel}
+            </label>
+            <input 
+              type="date" 
+              id="field-${field.id}" 
+              name="field-${field.id}" 
+              class="shopiform-input"
+              ${required}
+            />
+          </div>
+        `;
+      
+      default:
+        return `
+          <div class="shopiform-field">
+            <label class="shopiform-label" for="field-${field.id}">
+              ${field.label}${requiredLabel}
+            </label>
+            <input 
+              type="text" 
+              id="field-${field.id}" 
+              name="field-${field.id}" 
+              placeholder="${field.placeholder || ''}"
+              class="shopiform-input"
+              ${required}
+            />
+          </div>
+        `;
+    }
+  }
+
+  window.submitShopiForm = function(event, form) {
+    event.preventDefault();
+    
+    const formData = new FormData(form);
+    const formId = form.dataset.formId;
+    const shop = '{{ shop.permanent_domain }}';
+    
+    // Convert FormData to JSON
+    const data = {};
+    formData.forEach((value, key) => {
+      data[key] = value;
+    });
+    
+    // Submit to the app
+    fetch(`https://${shop}/apps/shopi-form/api/forms/${formId}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+      if (result.success) {
+        // Show success message
+        form.innerHTML = `
+          <div class="shopiform-success">
+            <h3>Thank you!</h3>
+            <p>Your form has been submitted successfully.</p>
+          </div>
+        `;
+      } else {
+        alert('Error submitting form. Please try again.');
+      }
+    })
+    .catch(error => {
+      console.error('Error submitting form:', error);
+      alert('Error submitting form. Please try again.');
+    });
+  }
+})();
+</script>
+
+<style>
+  .shopiform-wrapper {
+    margin: 2rem 0;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .shopiform-heading {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  .shopiform-description {
+    margin-bottom: 2rem;
+    text-align: center;
+    color: #666;
+  }
+  
+  .shopiform-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .shopiform-field {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .shopiform-label,
+  .shopiform-legend {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+  
+  .shopiform-input,
+  .shopiform-textarea,
+  .shopiform-select {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+  }
+  
+  .shopiform-input:focus,
+  .shopiform-textarea:focus,
+  .shopiform-select:focus {
+    outline: none;
+    border-color: #007cba;
+    box-shadow: 0 0 0 2px rgba(0, 124, 186, 0.1);
+  }
+  
+  .shopiform-fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .shopiform-radio-option,
+  .shopiform-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .shopiform-radio,
+  .shopiform-checkbox {
+    margin: 0;
+  }
+  
+  .shopiform-submit-btn {
+    background-color: #007cba;
+    color: white;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 1rem;
+  }
+  
+  .shopiform-submit-btn:hover {
+    background-color: #005a87;
+  }
+  
+  .shopiform-success {
+    text-align: center;
+    padding: 2rem;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    color: #155724;
+  }
+  
+  .shopiform-success h3 {
+    margin-bottom: 1rem;
+    color: #155724;
+  }
+  
+  .shopiform-placeholder,
+  .shopiform-error {
+    text-align: center;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    color: #6c757d;
+  }
+  
+  .shopiform-loading {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+  }
+</style>

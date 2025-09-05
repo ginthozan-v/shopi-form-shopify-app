@@ -137,6 +137,9 @@ export default function Index() {
                             </Text>
                           )}
                           <Text variant="bodySm" as="p" tone="subdued">
+                            Form ID: {id}
+                          </Text>
+                          <Text variant="bodySm" as="p" tone="subdued">
                             Created {new Date(createdAt).toLocaleDateString()}
                           </Text>
                         </div>

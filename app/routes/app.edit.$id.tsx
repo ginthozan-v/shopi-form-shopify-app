@@ -174,7 +174,7 @@ export default function EditForm() {
   const [formData, setFormData] = useState<FormData>({
     name: initialForm.name,
     description: initialForm.description,
-    fields: initialForm.fields,
+    fields: initialForm.fields as FormField[],
   });
   
   const [selectedField, setSelectedField] = useState<FormField | null>(null);
