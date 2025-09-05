@@ -20,9 +20,30 @@ if (process.env.NODE_ENV === "production") {
 }
 
 function getClient() {
-  const client = new PrismaClient();
-  // Connect eagerly
-  client.$connect();
+  // Use different database configurations for development vs production
+  const client = process.env.NODE_ENV === "production" 
+    ? new PrismaClient({
+        // Production PostgreSQL configuration
+        datasources: {
+          db: {
+            url: process.env.DATABASE_URL,
+          },
+        },
+      })
+    : new PrismaClient({
+        // Development SQLite configuration
+        datasources: {
+          db: {
+            url: "file:./prisma/dev.sqlite",
+          },
+        },
+      });
+  
+  // Connect eagerly in production
+  if (process.env.NODE_ENV === "production") {
+    client.$connect();
+  }
+  
   return client;
 }
 
