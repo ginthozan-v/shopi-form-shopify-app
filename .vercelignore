@@ -1,0 +1,18 @@
+# Development files
+.env.local
+.env.development
+
+# Test files
+test-*
+*.test.*
+
+# Documentation
+*.md
+!README.md
+
+# Development database
+prisma/dev.sqlite
+prisma/dev.sqlite-journal
+
+# Scripts
+scripts/
