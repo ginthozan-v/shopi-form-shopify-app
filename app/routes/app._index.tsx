@@ -8,12 +8,12 @@ import { authenticate } from "../shopify.server";
 import { db, initializeDatabase } from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
-
-  // Initialize database in production
-  await initializeDatabase();
-
   try {
+    const { session } = await authenticate.admin(request);
+
+    // Initialize database in production
+    await initializeDatabase();
+
     // Ensure db is available
     if (!db) {
       console.error('Database client is not initialized');
@@ -32,10 +32,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
 
     return json({ forms });
-  } catch (error) {
-    console.error('Database error in loader:', error);
-    return json({ forms: [] });
+  } catch (dbError) {
+    console.error('Database error in loader:', dbError);
+    return json({ forms: [], error: 'Failed to load forms' });
   }
+} catch (authError) {
+  console.error('Authentication error:', authError);
+  throw new Response("Authentication failed", { status: 401 });
+} catch (generalError) {
+  console.error('General error in loader:', generalError);
+  return json({ forms: [], error: 'An unexpected error occurred' });
+}
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {

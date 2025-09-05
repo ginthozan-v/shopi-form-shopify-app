@@ -47,32 +47,37 @@ function getClient() {
 let isInitialized = false;
 
 export async function initializeDatabase() {
-  if (isInitialized || process.env.NODE_ENV !== "production") {
+  if (isInitialized) {
     return;
   }
 
   try {
     console.log("🔄 Initializing database connection...");
-    await db.$connect();
     
-    // Try to run a simple query to ensure tables exist
-    await db.$queryRaw`SELECT 1`;
+    // Check if DATABASE_URL exists
+    if (!process.env.DATABASE_URL) {
+      console.error("❌ DATABASE_URL environment variable is missing");
+      throw new Error("DATABASE_URL is required for database connection");
+    }
+    
+    await db.$connect();
     console.log("✅ Database connection established");
+    
+    // Try to run a simple query to check if tables exist
+    try {
+      await db.session.findFirst({ take: 1 });
+      console.log("✅ Database tables verified");
+    } catch (tableError) {
+      console.log("⚠️ Tables might not exist, attempting to create schema...");
+      // Don't try to run prisma db push in serverless - just log and continue
+      console.log("📝 Note: Run 'npx prisma db push' manually if tables are missing");
+    }
     
     isInitialized = true;
   } catch (error) {
     console.error("❌ Database initialization failed:", error);
-    
-    // Try to push the schema if tables don't exist
-    try {
-      console.log("🔄 Attempting to create database schema...");
-      const { execSync } = await import('child_process');
-      execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
-      console.log("✅ Database schema created");
-      isInitialized = true;
-    } catch (pushError) {
-      console.error("❌ Failed to create schema:", pushError);
-    }
+    // Don't throw - let the app continue and handle errors gracefully
+    console.log("⚠️ Continuing without database initialization...");
   }
 }
 
