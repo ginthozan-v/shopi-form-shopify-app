@@ -5,10 +5,13 @@ import { useLoaderData, useFetcher } from "@remix-run/react";
 import { Page, Layout, Card, EmptyState, ResourceList, ResourceItem, Text, Badge, Button, ButtonGroup } from "@shopify/polaris";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
-import { db } from "../db.server";
+import { db, initializeDatabase } from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+
+  // Initialize database in production
+  await initializeDatabase();
 
   try {
     // Ensure db is available

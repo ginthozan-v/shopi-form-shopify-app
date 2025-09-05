@@ -39,12 +39,41 @@ function getClient() {
         },
       });
   
-  // Connect eagerly in production
-  if (process.env.NODE_ENV === "production") {
-    client.$connect();
-  }
-  
+  // Don't connect eagerly to avoid connection issues during build
   return client;
+}
+
+// Initialize database on first request in production
+let isInitialized = false;
+
+export async function initializeDatabase() {
+  if (isInitialized || process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  try {
+    console.log("🔄 Initializing database connection...");
+    await db.$connect();
+    
+    // Try to run a simple query to ensure tables exist
+    await db.$queryRaw`SELECT 1`;
+    console.log("✅ Database connection established");
+    
+    isInitialized = true;
+  } catch (error) {
+    console.error("❌ Database initialization failed:", error);
+    
+    // Try to push the schema if tables don't exist
+    try {
+      console.log("🔄 Attempting to create database schema...");
+      const { execSync } = await import('child_process');
+      execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+      console.log("✅ Database schema created");
+      isInitialized = true;
+    } catch (pushError) {
+      console.error("❌ Failed to create schema:", pushError);
+    }
+  }
 }
 
 export { db };
