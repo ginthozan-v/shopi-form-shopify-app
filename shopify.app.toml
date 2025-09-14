@@ -2,12 +2,13 @@
 
 client_id = "b1ea1767b39bf6b8a282fc97b8d263ed"
 name = "shopi-form"
-application_url = "https://example.com/"
+application_url = "https://td-herb-hiring-fragrances.trycloudflare.com"
 embedded = true
 handle = "shopi-form-2"
 
 [build]
 include_config_on_deploy = true
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2025-07"
@@ -25,7 +26,7 @@ api_version = "2025-07"
 scopes = "write_products"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = ["https://td-herb-hiring-fragrances.trycloudflare.com/auth/callback", "https://td-herb-hiring-fragrances.trycloudflare.com/auth/shopify/callback", "https://td-herb-hiring-fragrances.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false
