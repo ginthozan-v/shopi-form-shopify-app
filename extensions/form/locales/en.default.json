@@ -6,5 +6,15 @@
     "home": {
       "recommendationText": "Recommended Product!"
     }
+  },
+  "form": {
+    "loading": "Loading form...",
+    "submit": "Submit",
+    "success": "Thank you! Your form has been submitted.",
+    "error": {
+      "notFound": "Form not found",
+      "loadingFailed": "Error loading form. Please try again later.",
+      "configureCode": "Please configure the form code in the theme editor."
+    }
   }
 }

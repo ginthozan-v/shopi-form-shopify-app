@@ -7,34 +7,32 @@ import {
   Layout,
   Page,
   IndexTable,
-  Thumbnail,
   Text,
-  Icon,
-  InlineStack,
 } from "@shopify/polaris";
-
-import { getQRCodes } from "../models/QRCode.server";
-import { AlertDiamondIcon, ImageIcon } from "@shopify/polaris-icons";
+import db from "../db.server";
 
 export async function loader({ request }: { request: Request }) {
-  const { admin, session } = await authenticate.admin(request);
-  const qrCodes = await getQRCodes(session.shop, admin.graphql);
+  const { session } = await authenticate.admin(request);
+  const forms = await db.form.findMany({
+    where: { shop: session.shop },
+    orderBy: { createdAt: "desc" },
+  });
 
   return json({
-    qrCodes,
+    forms,
   });
 }
 
-const EmptyQRCodeState = ({ onAction }: { onAction: () => void }) => (
+const EmptyStateComponent = ({ onAction }: { onAction: () => void }) => (
   <EmptyState
-    heading="Create unique QR codes for your product"
+    heading="Create your first form"
     action={{
-      content: "Create QR code",
+      content: "Create Form",
       onAction,
     }}
     image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
   >
-    <p>Allow customers to scan codes and buy products using their phones.</p>
+    {/* <p>Allow customers to scan codes and buy products using their phones.</p> */}
   </EmptyState>
 );
 
@@ -44,79 +42,74 @@ function truncate(str: any, { length = 25 } = {}) {
   return str.slice(0, length) + "…";
 }
 
-const QRTable = ({ qrCodes }: { qrCodes: any[] }) => (
+const Table = ({ forms }: { forms: any[] }) => (
   <IndexTable
     resourceName={{
-      singular: "QR code",
-      plural: "QR codes",
+      singular: "Form",
+      plural: "Forms",
     }}
-    itemCount={qrCodes.length}
+    itemCount={forms.length}
     headings={[
-      { title: "Thumbnail", hidden: true },
       { title: "Title" },
-      { title: "Product" },
+      { title: "Code" },
+      { title: "Fields" },
       { title: "Date created" },
-      { title: "Scans" },
     ]}
     selectable={false}
   >
-    {qrCodes.map((qrCode) => (
-      <QRTableRow key={qrCode.id} qrCode={qrCode} />
+    {forms.map((form) => (
+      <FormTableRow key={form.id} form={form} />
     ))}
   </IndexTable>
 );
 
-const QRTableRow = ({ qrCode }: { qrCode: any }) => (
-  <IndexTable.Row id={qrCode.id} position={qrCode.id}>
-    <IndexTable.Cell>
-      <Thumbnail
-        source={qrCode.productImage || ImageIcon}
-        alt={qrCode.productTitle}
-        size="small"
-      />
-    </IndexTable.Cell>
-    <IndexTable.Cell>
-      <Link to={`qrcodes/${qrCode.id}`}>{truncate(qrCode.title)}</Link>
-    </IndexTable.Cell>
-    <IndexTable.Cell>
-      {qrCode.productDeleted ? (
-        <InlineStack align="start" gap="200">
-          <span style={{ width: "20px" }}>
-            <Icon source={AlertDiamondIcon} tone="critical" />
-          </span>
-          <Text tone="critical" as="span">
-            product has been deleted
+const FormTableRow = ({ form }: { form: any }) => {
+  const fieldsCount = JSON.parse(form.fields || "[]").length;
+  
+  return (
+    <IndexTable.Row id={form.id} position={form.id}>
+      <IndexTable.Cell>
+        <Link to={`form/${form.id}`}>
+          <Text as="span" fontWeight="semibold">
+            {truncate(form.title)}
           </Text>
-        </InlineStack>
-      ) : (
-        truncate(qrCode.productTitle)
-      )}
-    </IndexTable.Cell>
-    <IndexTable.Cell>
-      {new Date(qrCode.createdAt).toDateString()}
-    </IndexTable.Cell>
-    <IndexTable.Cell>{qrCode.scans}</IndexTable.Cell>
-  </IndexTable.Row>
-);
+        </Link>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <Text as="span" variant="bodyMd">
+          {form.code}
+        </Text>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <Text as="span" tone="subdued">
+          {fieldsCount} {fieldsCount === 1 ? "field" : "fields"}
+        </Text>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        {new Date(form.createdAt).toDateString()}
+      </IndexTable.Cell>
+    </IndexTable.Row>
+  );
+};
 
 export default function Index() {
-  const { qrCodes } = useLoaderData<typeof loader>();
+  const { forms } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
 
   return (
     <Page>
-      <ui-title-bar title="QR codes">
-        <button variant="primary" onClick={() => navigate("/app/qrcodes/new")}>
-          Create QR code
+      <ui-title-bar title="Forms">
+        <button variant="primary" onClick={() => navigate("/app/form/new")}>
+          Create Form
         </button>
       </ui-title-bar>
       <Layout>
         <Layout.Section>
           <Card padding="0">
-            {qrCodes.length === 0 ? (
-              <EmptyQRCodeState onAction={() => navigate("qrcodes/new")} />
+            {forms.length === 0 ? (
+              <EmptyStateComponent onAction={() => navigate("form/new")} />
             ) : (
-              <QRTable qrCodes={qrCodes} />
+              <Table forms={forms} />
             )}
           </Card>
         </Layout.Section>

@@ -2,7 +2,7 @@
 
 client_id = "b1ea1767b39bf6b8a282fc97b8d263ed"
 name = "shopi-form"
-application_url = "https://relief-handles-questions-wires.trycloudflare.com"
+application_url = "https://women-sand-extract-starting.trycloudflare.com"
 embedded = true
 handle = "shopi-form-2"
 
@@ -25,8 +25,13 @@ api_version = "2025-07"
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "write_products"
 
+[app_proxy]
+url = "https://women-sand-extract-starting.trycloudflare.com"
+prefix = "apps"
+subpath = "form"
+
 [auth]
-redirect_urls = ["https://relief-handles-questions-wires.trycloudflare.com/auth/callback", "https://relief-handles-questions-wires.trycloudflare.com/auth/shopify/callback", "https://relief-handles-questions-wires.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://women-sand-extract-starting.trycloudflare.com/auth/callback", "https://women-sand-extract-starting.trycloudflare.com/auth/shopify/callback", "https://women-sand-extract-starting.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

@@ -1,0 +1,181 @@
+{% assign form_code = block.settings.form_code %}
+
+<div class="custom-form-wrapper" style="padding: 2rem; max-width: 800px; margin: 0 auto;">
+  <div id="form-container-{{ block.id }}" data-form-code="{{ form_code }}">
+    <div class="loading">Loading form...</div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const formCode = '{{ form_code }}';
+    const containerId = 'form-container-{{ block.id }}';
+    const container = document.getElementById(containerId);
+
+    if (!formCode) {
+      container.innerHTML = '<p style="color: #999;">Please configure the form code in the theme editor.</p>';
+      return;
+    }
+
+    // Fetch form data from proxy
+    // For development: use full URL, for production: use proxy path
+    const isDevelopment = window.location.hostname.includes('myshopify.com');
+    const apiUrl = isDevelopment 
+      ? 'https://women-sand-extract-starting.trycloudflare.com/apps/form/' + formCode
+      : '/apps/form/' + formCode;
+    
+    console.log('Fetching form from:', apiUrl);
+    
+    fetch(apiUrl)
+      .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Form data received:', data);
+        if (data.error) {
+          container.innerHTML = '<p style="color: #d72c0d;">Error: ' + data.error + '</p>';
+          return;
+        }
+
+        // Render the form
+        let html = '<div class="custom-form">';
+        
+        // Title
+        html += '<h2 style="font-size: 2rem; margin-bottom: 1rem;">' + data.title + '</h2>';
+        
+        // Description
+        if (data.description) {
+          html += '<p style="color: #6b7280; margin-bottom: 2rem;">' + data.description + '</p>';
+        }
+
+        // Form
+        html += '<form id="custom-form-' + data.code + '" style="display: flex; flex-direction: column; gap: 1.5rem;">';
+
+        // Render fields
+        data.fields.forEach(function(field) {
+          html += '<div class="form-field">';
+          
+          switch(field.type) {
+            case 'text':
+            case 'email':
+            case 'phone':
+              html += '<label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">' + 
+                      field.label + (field.required ? ' *' : '') + '</label>';
+              html += '<input type="' + field.type + '" name="' + field.id + '" ' +
+                      'placeholder="' + (field.placeholder || '') + '" ' +
+                      (field.required ? 'required' : '') + ' ' +
+                      'style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">';
+              break;
+
+            case 'date':
+              html += '<label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">' + 
+                      field.label + (field.required ? ' *' : '') + '</label>';
+              html += '<input type="date" name="' + field.id + '" ' +
+                      (field.required ? 'required' : '') + ' ' +
+                      'style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">';
+              break;
+
+            case 'textarea':
+              html += '<label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">' + 
+                      field.label + (field.required ? ' *' : '') + '</label>';
+              html += '<textarea name="' + field.id + '" rows="4" ' +
+                      'placeholder="' + (field.placeholder || '') + '" ' +
+                      (field.required ? 'required' : '') + ' ' +
+                      'style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem;"></textarea>';
+              break;
+
+            case 'select':
+              html += '<label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">' + 
+                      field.label + (field.required ? ' *' : '') + '</label>';
+              html += '<select name="' + field.id + '" ' +
+                      (field.required ? 'required' : '') + ' ' +
+                      'style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">';
+              html += '<option value="">Select an option</option>';
+              if (field.options) {
+                field.options.forEach(function(option) {
+                  html += '<option value="' + option + '">' + option + '</option>';
+                });
+              }
+              html += '</select>';
+              break;
+
+            case 'checkbox':
+              html += '<div style="display: flex; align-items: center; gap: 0.5rem;">';
+              html += '<input type="checkbox" name="' + field.id + '" ' +
+                      (field.required ? 'required' : '') + '>';
+              html += '<label style="font-weight: 500;">' + field.label + 
+                      (field.required ? ' *' : '') + '</label>';
+              html += '</div>';
+              break;
+          }
+          
+          html += '</div>';
+        });
+
+        // Submit button
+        html += '<button type="submit" style="background-color: #000; color: #fff; padding: 1rem 2rem; border: none; border-radius: 0.375rem; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 1rem;">' +
+                'Submit</button>';
+
+        html += '</form>';
+        html += '</div>';
+
+        container.innerHTML = html;
+
+        // Handle form submission
+        document.getElementById('custom-form-' + data.code).addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const formData = new FormData(e.target);
+          const submitData = {};
+          for (let [key, value] of formData.entries()) {
+            submitData[key] = value;
+          }
+
+          // You can send this to a submission endpoint
+          console.log('Form submitted:', submitData);
+          
+          // Show success message
+          alert('Thank you! Your form has been submitted.');
+          e.target.reset();
+        });
+      })
+      .catch(error => {
+        console.error('Error loading form:', error);
+        console.error('Error details:', error.message);
+        container.innerHTML = '<div style="color: #d72c0d;"><p><strong>Error loading form.</strong></p><p>Code: ' + formCode + '</p><p>URL: ' + apiUrl + '</p><p>Error: ' + error.message + '</p><p>Check console for details.</p></div>';
+      });
+  })();
+</script>
+
+<style>
+  .custom-form-wrapper input:focus,
+  .custom-form-wrapper textarea:focus,
+  .custom-form-wrapper select:focus {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+
+  .custom-form-wrapper button:hover {
+    background-color: #374151;
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Custom Form",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "form_code",
+      "label": "Form Code",
+      "info": "Enter the 5-digit form code from your admin panel"
+    }
+  ]
+}
+{% endschema %}
+

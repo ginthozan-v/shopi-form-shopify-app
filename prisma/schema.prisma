@@ -42,3 +42,14 @@ model QRCode {
   scans            Int      @default(0)
   createdAt        DateTime @default(now())
 }
+
+model Form {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  shop        String
+  title       String
+  description String?
+  fields      String   // JSON string of fields array
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
