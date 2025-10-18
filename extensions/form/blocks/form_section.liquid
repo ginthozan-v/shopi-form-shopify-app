@@ -126,21 +126,49 @@
         container.innerHTML = html;
 
         // Handle form submission
-        document.getElementById('custom-form-' + data.code).addEventListener('submit', function(e) {
+        const form = document.getElementById('custom-form-' + data.code);
+        form.addEventListener('submit', function(e) {
           e.preventDefault();
           
-          const formData = new FormData(e.target);
-          const submitData = {};
-          for (let [key, value] of formData.entries()) {
-            submitData[key] = value;
-          }
-
-          // You can send this to a submission endpoint
-          console.log('Form submitted:', submitData);
+          // Show loading state
+          const submitBtn = form.querySelector('button[type="submit"]');
+          const originalText = submitBtn.textContent;
+          submitBtn.textContent = 'Submitting...';
+          submitBtn.disabled = true;
           
-          // Show success message
-          alert('Thank you! Your form has been submitted.');
-          e.target.reset();
+          const formData = new FormData(e.target);
+          formData.append('formCode', data.code);
+          formData.append('shop', data.shop);
+
+          // Submit to backend
+          const submitUrl = isDevelopment 
+            ? 'https://women-sand-extract-starting.trycloudflare.com/apps/form/submit'
+            : '/apps/form/submit';
+
+          fetch(submitUrl, {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => response.json())
+          .then(result => {
+            console.log('Submission result:', result);
+            
+            if (result.success) {
+              alert(result.message || 'Thank you! Your form has been submitted.');
+              e.target.reset();
+            } else {
+              alert('Error: ' + (result.error || 'Something went wrong'));
+            }
+            
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+          })
+          .catch(error => {
+            console.error('Submission error:', error);
+            alert('Error submitting form. Please try again.');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+          });
         });
       })
       .catch(error => {

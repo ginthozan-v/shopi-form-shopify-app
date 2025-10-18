@@ -55,6 +55,7 @@ export async function loader({
         title: form.title,
         description: form.description,
         fields: JSON.parse(form.fields),
+        shop: form.shop,
       },
       {
         headers: {
