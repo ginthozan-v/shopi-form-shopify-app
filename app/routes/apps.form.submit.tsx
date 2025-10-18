@@ -76,20 +76,24 @@ export async function action({ request }: { request: Request }) {
     }
 
     // Get session for the shop to make API calls
+    console.log("Looking for sessions for shop:", shopDomain);
     const sessions = await sessionStorage.findSessionsByShop(shopDomain);
+    console.log("Found sessions:", sessions?.length || 0);
     const session = sessions && sessions.length > 0 ? sessions[0] : null;
 
-    if (!session || !session.accessToken) {
-      console.error("No session found for shop:", shopDomain);
-      // Still save the submission but don't create customer
+    if (!session) {
+      console.error("❌ No session found for shop:", shopDomain);
+      console.error("Available sessions:", sessions);
       return json(
         {
-          success: true,
-          message: "Form submitted successfully (customer creation pending)",
-          note: "Shop session not found. Contact admin.",
+          success: false,
+          error: "No shop session found",
+          message: "Form submitted but customer could not be created (no session)",
+          note: "The app may not be installed on this shop or the session expired.",
           submissionData,
         },
         {
+          status: 503,
           headers: {
             "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
@@ -97,6 +101,27 @@ export async function action({ request }: { request: Request }) {
         }
       );
     }
+
+    if (!session.accessToken) {
+      console.error("❌ Session found but no access token");
+      return json(
+        {
+          success: false,
+          error: "Invalid session",
+          message: "Form submitted but customer could not be created (invalid session)",
+          submissionData,
+        },
+        {
+          status: 503,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    console.log("✅ Valid session found for shop:", shopDomain);
 
     // Create customer using Shopify GraphQL Admin API
     const customerMutation = `
@@ -122,12 +147,14 @@ export async function action({ request }: { request: Request }) {
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       phone: phone || undefined,
-      note: `Created via form: ${form.title} (Code: ${code})`,
+      note: `Created via ShopiForm: ${form.title} (Code: ${code})`,
       tags: [`form-${code}`, "form-submission"],
     };
 
     console.log("Creating customer with:", customerInput);
 
+    console.log("Making API call to:", `https://${shopDomain}/admin/api/2025-01/graphql.json`);
+    
     const response = await fetch(
       `https://${shopDomain}/admin/api/2025-01/graphql.json`,
       {
@@ -143,8 +170,30 @@ export async function action({ request }: { request: Request }) {
       }
     );
 
+    console.log("API Response status:", response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ API Error:", errorText);
+      return json(
+        {
+          success: false,
+          error: "Shopify API error",
+          message: `API returned status ${response.status}`,
+          details: errorText,
+        },
+        {
+          status: 500,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
     const result = await response.json();
-    console.log("Shopify API response:", result);
+    console.log("✅ Shopify API response:", JSON.stringify(result, null, 2));
 
     if (result.data?.customerCreate?.userErrors?.length > 0) {
       return json(
