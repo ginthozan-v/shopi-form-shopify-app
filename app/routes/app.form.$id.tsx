@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, useNavigate, useSubmit, useNavigation } from "@remix-run/react";
+import {
+  useLoaderData,
+  useNavigate,
+  useSubmit,
+  useNavigation,
+} from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import {
@@ -23,9 +28,6 @@ import {
   TextIcon,
   EmailIcon,
   PhoneIcon,
-  CalendarIcon,
-  SelectIcon,
-  CheckboxIcon,
   DeleteIcon,
 } from "@shopify/polaris-icons";
 
@@ -36,7 +38,8 @@ type FieldType =
   | "date"
   | "textarea"
   | "select"
-  | "checkbox";
+  | "checkbox"
+  | "company";
 
 interface FormField {
   id: string;
@@ -48,13 +51,74 @@ interface FormField {
 }
 
 const fieldTypes = [
-  { type: "text" as FieldType, label: "Text Input", icon: TextIcon },
+  { type: "text" as FieldType, label: "First Name", icon: TextIcon },
+  { type: "text" as FieldType, label: "Last Name", icon: TextIcon },
   { type: "email" as FieldType, label: "Email", icon: EmailIcon },
   { type: "phone" as FieldType, label: "Phone", icon: PhoneIcon },
-  { type: "date" as FieldType, label: "Date", icon: CalendarIcon },
-  { type: "textarea" as FieldType, label: "Text Area", icon: TextIcon },
-  { type: "select" as FieldType, label: "Dropdown", icon: SelectIcon },
-  { type: "checkbox" as FieldType, label: "Checkbox", icon: CheckboxIcon },
+  { type: "company" as FieldType, label: "Company", icon: TextIcon },
+];
+
+// List of countries for the company field
+const countries = [
+  { label: "United States", value: "US", code: "+1" },
+  { label: "Canada", value: "CA", code: "+1" },
+  { label: "United Kingdom", value: "GB", code: "+44" },
+  { label: "Australia", value: "AU", code: "+61" },
+  { label: "Germany", value: "DE", code: "+49" },
+  { label: "France", value: "FR", code: "+33" },
+  { label: "Italy", value: "IT", code: "+39" },
+  { label: "Spain", value: "ES", code: "+34" },
+  { label: "Netherlands", value: "NL", code: "+31" },
+  { label: "Belgium", value: "BE", code: "+32" },
+  { label: "Switzerland", value: "CH", code: "+41" },
+  { label: "Austria", value: "AT", code: "+43" },
+  { label: "Sweden", value: "SE", code: "+46" },
+  { label: "Norway", value: "NO", code: "+47" },
+  { label: "Denmark", value: "DK", code: "+45" },
+  { label: "Finland", value: "FI", code: "+358" },
+  { label: "Ireland", value: "IE", code: "+353" },
+  { label: "Poland", value: "PL", code: "+48" },
+  { label: "Portugal", value: "PT", code: "+351" },
+  { label: "Greece", value: "GR", code: "+30" },
+  { label: "Czech Republic", value: "CZ", code: "+420" },
+  { label: "Hungary", value: "HU", code: "+36" },
+  { label: "Romania", value: "RO", code: "+40" },
+  { label: "Bulgaria", value: "BG", code: "+359" },
+  { label: "Croatia", value: "HR", code: "+385" },
+  { label: "Slovakia", value: "SK", code: "+421" },
+  { label: "Slovenia", value: "SI", code: "+386" },
+  { label: "Lithuania", value: "LT", code: "+370" },
+  { label: "Latvia", value: "LV", code: "+371" },
+  { label: "Estonia", value: "EE", code: "+372" },
+  { label: "Luxembourg", value: "LU", code: "+352" },
+  { label: "Malta", value: "MT", code: "+356" },
+  { label: "Cyprus", value: "CY", code: "+357" },
+  { label: "Japan", value: "JP", code: "+81" },
+  { label: "South Korea", value: "KR", code: "+82" },
+  { label: "China", value: "CN", code: "+86" },
+  { label: "India", value: "IN", code: "+91" },
+  { label: "Singapore", value: "SG", code: "+65" },
+  { label: "Hong Kong", value: "HK", code: "+852" },
+  { label: "Malaysia", value: "MY", code: "+60" },
+  { label: "Thailand", value: "TH", code: "+66" },
+  { label: "Indonesia", value: "ID", code: "+62" },
+  { label: "Philippines", value: "PH", code: "+63" },
+  { label: "Vietnam", value: "VN", code: "+84" },
+  { label: "New Zealand", value: "NZ", code: "+64" },
+  { label: "Brazil", value: "BR", code: "+55" },
+  { label: "Mexico", value: "MX", code: "+52" },
+  { label: "Argentina", value: "AR", code: "+54" },
+  { label: "Chile", value: "CL", code: "+56" },
+  { label: "Colombia", value: "CO", code: "+57" },
+  { label: "Peru", value: "PE", code: "+51" },
+  { label: "South Africa", value: "ZA", code: "+27" },
+  { label: "Israel", value: "IL", code: "+972" },
+  { label: "United Arab Emirates", value: "AE", code: "+971" },
+  { label: "Saudi Arabia", value: "SA", code: "+966" },
+  { label: "Turkey", value: "TR", code: "+90" },
+  { label: "Russia", value: "RU", code: "+7" },
+  { label: "Ukraine", value: "UA", code: "+380" },
+  { label: "Egypt", value: "EG", code: "+20" },
 ];
 
 // Generate a unique 5-digit code
@@ -163,9 +227,45 @@ export default function FormPage() {
   const nav = useNavigation();
   const isSaving = nav.state === "submitting";
 
+  // Detect user's country from IP geolocation
+  const getDefaultCountry = () => {
+    try {
+      // Fallback to browser locale
+      const locale = navigator.language || 'en-US';
+      const countryCode = locale.split('-')[1]?.toUpperCase() || 'US';
+      const countryExists = countries.some(c => c.value === countryCode);
+      return countryExists ? countryCode : 'US';
+    } catch {
+      return 'US';
+    }
+  };
+
   const [fields, setFields] = useState<FormField[]>([]);
   const [formTitle, setFormTitle] = useState("Untitled Form");
   const [formDescription, setFormDescription] = useState("");
+  const [shippingSameAsBilling, setShippingSameAsBilling] = useState(true);
+  const [selectedBillingCountry, setSelectedBillingCountry] = useState(getDefaultCountry());
+  const [selectedShippingCountry, setSelectedShippingCountry] = useState(getDefaultCountry());
+
+  // Detect country from IP on mount
+  useEffect(() => {
+    async function detectCountry() {
+      try {
+        const response = await fetch('https://ipapi.co/country/');
+        if (response.ok) {
+          const countryCode = (await response.text()).trim().toUpperCase();
+          const countryExists = countries.some(c => c.value === countryCode);
+          if (countryExists) {
+            setSelectedBillingCountry(countryCode);
+            setSelectedShippingCountry(countryCode);
+          }
+        }
+      } catch (error) {
+        console.log('Could not detect country from IP, using browser locale');
+      }
+    }
+    detectCountry();
+  }, []);
 
   // Load data from loader
   useEffect(() => {
@@ -177,10 +277,11 @@ export default function FormPage() {
   }, [loaderData]);
 
   const addField = (type: FieldType) => {
+    const fieldTypeConfig = fieldTypes.find(ft => ft.type === type);
     const newField: FormField = {
       id: `field-${Date.now()}`,
       type,
-      label: `${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
+      label: fieldTypeConfig?.label || `${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
       placeholder: "",
       required: false,
       options: type === "select" ? ["Option 1", "Option 2"] : undefined,
@@ -254,6 +355,169 @@ export default function FormPage() {
         );
       case "checkbox":
         return <Checkbox label={field.label} />;
+      case "company":
+        const billingCountryCode = countries.find(c => c.value === selectedBillingCountry)?.code || "+1";
+        const shippingCountryCode = countries.find(c => c.value === selectedShippingCountry)?.code || "+1";
+        
+        return (
+          <BlockStack gap="400">
+            {/* Billing Address Section */}
+            <Text as="h3" variant="headingMd">
+              Billing Address
+            </Text>
+            
+            <Select
+              label="Country"
+              options={countries.map(c => ({ label: c.label, value: c.value }))}
+              value={selectedBillingCountry}
+              onChange={setSelectedBillingCountry}
+              requiredIndicator={field.required}
+            />
+            
+            <TextField
+              label="Company Name"
+              placeholder="Enter company name"
+              autoComplete="off"
+              requiredIndicator={field.required}
+            />
+            
+            <InlineGrid columns={2} gap="200">
+              <TextField
+                label="Street & House Number"
+                placeholder="123 Main St"
+                autoComplete="off"
+                requiredIndicator={field.required}
+              />
+              
+              <TextField
+                label="Apartment, Suite, etc."
+                placeholder="Apt 4B"
+                autoComplete="off"
+              />
+            </InlineGrid>
+            
+            <InlineGrid columns={2} gap="200">
+              <TextField
+                label="Postal Code"
+                placeholder="10001"
+                autoComplete="off"
+                requiredIndicator={field.required}
+              />
+              
+              <TextField
+                label="City"
+                placeholder="New York"
+                autoComplete="off"
+                requiredIndicator={field.required}
+              />
+            </InlineGrid>
+            
+            <InlineGrid columns={["oneThird", "twoThirds"]} gap="200">
+              <TextField
+                label="Country Code"
+                value={billingCountryCode}
+                disabled
+                autoComplete="off"
+              />
+              
+              <TextField
+                label="Billing Phone"
+                type="tel"
+                placeholder="(555) 123-4567"
+                autoComplete="off"
+                requiredIndicator={field.required}
+              />
+            </InlineGrid>
+            
+            <TextField
+              label="Company Tax ID"
+              placeholder="Enter tax ID"
+              autoComplete="off"
+              requiredIndicator={field.required}
+            />
+            
+            <Divider />
+            
+            {/* Shipping Same as Billing Checkbox */}
+            <Checkbox
+              label="Shipping address same as billing"
+              checked={shippingSameAsBilling}
+              onChange={setShippingSameAsBilling}
+            />
+            
+            {/* Shipping Address Section - Only shown if checkbox is unchecked */}
+            {!shippingSameAsBilling && (
+              <BlockStack gap="400">
+                <Text as="h3" variant="headingMd">
+                  Shipping Address
+                </Text>
+                
+                <Select
+                  label="Country"
+                  options={countries.map(c => ({ label: c.label, value: c.value }))}
+                  value={selectedShippingCountry}
+                  onChange={setSelectedShippingCountry}
+                  requiredIndicator={field.required}
+                />
+                
+                <TextField
+                  label="Company Name"
+                  placeholder="Enter company name"
+                  autoComplete="off"
+                  requiredIndicator={field.required}
+                />
+                
+                <InlineGrid columns={2} gap="200">
+                  <TextField
+                    label="Street & House Number"
+                    placeholder="123 Main St"
+                    autoComplete="off"
+                    requiredIndicator={field.required}
+                  />
+                  
+                  <TextField
+                    label="Apartment, Suite, etc."
+                    placeholder="Apt 4B"
+                    autoComplete="off"
+                  />
+                </InlineGrid>
+                
+                <InlineGrid columns={2} gap="200">
+                  <TextField
+                    label="Postal Code"
+                    placeholder="10001"
+                    autoComplete="off"
+                    requiredIndicator={field.required}
+                  />
+                  
+                  <TextField
+                    label="City"
+                    placeholder="New York"
+                    autoComplete="off"
+                    requiredIndicator={field.required}
+                  />
+                </InlineGrid>
+                
+                <InlineGrid columns={["oneThird", "twoThirds"]} gap="200">
+                  <TextField
+                    label="Country Code"
+                    value={shippingCountryCode}
+                    disabled
+                    autoComplete="off"
+                  />
+                  
+                  <TextField
+                    label="Shipping Phone"
+                    type="tel"
+                    placeholder="(555) 123-4567"
+                    autoComplete="off"
+                    requiredIndicator={field.required}
+                  />
+                </InlineGrid>
+              </BlockStack>
+            )}
+          </BlockStack>
+        );
       default:
         return null;
     }
@@ -347,7 +611,7 @@ export default function FormPage() {
     <Page>
       <ui-title-bar title={loaderData.id ? "Edit Form" : "Create New Form"}>
         <button variant="breadcrumb" onClick={() => navigate("/app")}>
-          Forms
+          ShopiForms
         </button>
       </ui-title-bar>
 
@@ -355,8 +619,7 @@ export default function FormPage() {
         <div style={{ marginBottom: "1rem" }}>
           <Banner tone="info">
             <Text as="p" variant="bodyMd">
-              Form Code: <strong>{loaderData.code}</strong> - Share this code
-              with your customers
+              Form Code: <strong>{loaderData.code}</strong> - You this code in your storefront customizer
             </Text>
           </Banner>
         </div>
@@ -366,21 +629,21 @@ export default function FormPage() {
         {/* Left Side - Form Builder */}
         <Card>
           <BlockStack gap="400">
-            <Text as="h2" variant="headingLg">
-              Form Builder
+            <Text as="h2" variant="headingSm">
+              Form
             </Text>
             <Divider />
 
             {/* Form Title & Description */}
             <TextField
-              label="Form Title"
+              label="Title"
               value={formTitle}
               onChange={setFormTitle}
               autoComplete="off"
             />
 
             <TextField
-              label="Form Description"
+              label="Description"
               value={formDescription}
               onChange={setFormDescription}
               multiline={3}
@@ -462,14 +725,14 @@ export default function FormPage() {
         {/* Right Side - Form Preview */}
         <Card>
           <BlockStack gap="400">
-            <Text as="h2" variant="headingLg">
+            <Text as="h2" variant="headingSm">
               Preview
             </Text>
             <Divider />
             <BlockStack gap="400">
               {/* Form Title & Description Preview */}
               <BlockStack gap="200">
-                <Text as="h1" variant="heading2xl">
+                <Text as="h1" variant="headingLg">
                   {formTitle}
                 </Text>
                 {formDescription && (
@@ -534,7 +797,7 @@ export default function FormPage() {
                 }
                 autoComplete="off"
               />
-              {selectedField.type !== "checkbox" && (
+              {selectedField.type !== "checkbox" && selectedField.type !== "company" && (
                 <TextField
                   label="Placeholder"
                   value={selectedField.placeholder || ""}

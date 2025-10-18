@@ -1,5 +1,5 @@
 {
-  "name": "shopi-form",
+  "name": "Shopi Form",
   "private": true,
   "scripts": {
     "build": "remix vite:build",
@@ -74,5 +74,5 @@
     "minimatch": "9.0.5",
     "vite": "^6.2.2"
   },
-  "author": "ginthu"
+  "author": "Ginthozan"
 }

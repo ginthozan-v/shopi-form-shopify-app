@@ -1,37 +1,36 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "b1ea1767b39bf6b8a282fc97b8d263ed"
-name = "shopi-form"
-application_url = "https://bring-either-civilization-newman.trycloudflare.com"
+name = "ShopiForm"
+application_url = "https://example.com/"
 embedded = true
-handle = "shopi-form-2"
+handle = "shopi-form"
 
 [build]
-include_config_on_deploy = true
 automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2025-07"
 
   [[webhooks.subscriptions]]
-  topics = [ "app/uninstalled" ]
-  uri = "/webhooks/app/uninstalled"
-
-  [[webhooks.subscriptions]]
   topics = [ "app/scopes_update" ]
   uri = "/webhooks/app/scopes_update"
 
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,write_customers"
-
-[app_proxy]
-url = "https://bring-either-civilization-newman.trycloudflare.com"
-prefix = "apps"
-subpath = "form"
+scopes = "write_products"
 
 [auth]
-redirect_urls = ["https://bring-either-civilization-newman.trycloudflare.com/auth/callback", "https://bring-either-civilization-newman.trycloudflare.com/auth/shopify/callback", "https://bring-either-civilization-newman.trycloudflare.com/api/auth/callback"]
+redirect_urls = [ "https://example.com/api/auth" ]
+
+[app_proxy]
+url = "https://distributor-practice-coat-gst.trycloudflare.com"
+subpath = "form"
+prefix = "apps"
 
 [pos]
 embedded = false

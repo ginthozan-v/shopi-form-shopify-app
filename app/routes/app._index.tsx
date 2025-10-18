@@ -65,7 +65,7 @@ const Table = ({ forms }: { forms: any[] }) => (
 
 const FormTableRow = ({ form }: { form: any }) => {
   const fieldsCount = JSON.parse(form.fields || "[]").length;
-  
+
   return (
     <IndexTable.Row id={form.id} position={form.id}>
       <IndexTable.Cell>
@@ -98,10 +98,8 @@ export default function Index() {
 
   return (
     <Page>
-      <ui-title-bar title="Forms">
-        <button variant="primary" onClick={() => navigate("/app/form/new")}>
-          Create Form
-        </button>
+      <ui-title-bar title="ShopiForms">
+        <Link to="/app/form/new">Create Form</Link>
       </ui-title-bar>
       <Layout>
         <Layout.Section>
