@@ -26,13 +26,14 @@ export async function loader({ request }: { request: Request }) {
 const EmptyStateComponent = ({ onAction }: { onAction: () => void }) => (
   <EmptyState
     heading="Create your first form"
-    action={{
-      content: "Create Form",
-      onAction,
-    }}
+    action={{ content: "Create Form", onAction }}
+    // secondaryAction={{
+    //   content: 'Learn more',
+    //   url: 'https://help.shopify.com',
+    // }}
     image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
   >
-    {/* <p>Allow customers to scan codes and buy products using their phones.</p> */}
+    {/* <p>Track and receive your incoming inventory from suppliers.</p> */}
   </EmptyState>
 );
 

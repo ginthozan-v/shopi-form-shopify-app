@@ -22,13 +22,13 @@ api_version = "2025-07"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = "write_products,write_customers,read_customers,write_companies,read_companies"
 
 [auth]
 redirect_urls = [ "https://example.com/api/auth" ]
 
 [app_proxy]
-url = "https://distributor-practice-coat-gst.trycloudflare.com"
+url = " https://buf-follows-max-convertible.trycloudflare.com"
 subpath = "form"
 prefix = "apps"
 

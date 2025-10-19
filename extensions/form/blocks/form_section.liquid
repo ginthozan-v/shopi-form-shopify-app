@@ -21,7 +21,7 @@
     // For development: use full URL, for production: use proxy path
     const isDevelopment = window.location.hostname.includes('myshopify.com');
     const apiUrl = isDevelopment 
-      ? 'https://distributor-practice-coat-gst.trycloudflare.com/apps/form/' + formCode
+      ? ' https://buf-follows-max-convertible.trycloudflare.com/apps/form/' + formCode
       : '/apps/form/' + formCode;
     
     console.log('Fetching form from:', apiUrl);
@@ -464,7 +464,7 @@
 
           // Submit to backend
           const submitUrl = isDevelopment 
-            ? 'https://distributor-practice-coat-gst.trycloudflare.com/apps/form/submit'
+            ? ' https://buf-follows-max-convertible.trycloudflare.com/apps/form/submit'
             : '/apps/form/submit';
 
           fetch(submitUrl, {
