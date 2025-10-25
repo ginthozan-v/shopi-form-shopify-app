@@ -98,6 +98,15 @@ export async function action({ request }: { request: Request }) {
     const billingProvince = companyFieldId ? (formData.get(`${companyFieldId}_billing_province`) as string || "") : "";
     const billingPhone = companyFieldId ? (formData.get(`${companyFieldId}_billing_phone`) as string || phone) : phone;
 
+    // Shipping address fields
+    const shippingCountry = companyFieldId ? (formData.get(`${companyFieldId}_shipping_country`) as string || "") : "";
+    const shippingStreet = companyFieldId ? (formData.get(`${companyFieldId}_shipping_street`) as string || "") : "";
+    const shippingApartment = companyFieldId ? (formData.get(`${companyFieldId}_shipping_apartment`) as string || "") : "";
+    const shippingPostalCode = companyFieldId ? (formData.get(`${companyFieldId}_shipping_postal_code`) as string || "") : "";
+    const shippingCity = companyFieldId ? (formData.get(`${companyFieldId}_shipping_city`) as string || "") : "";
+    const shippingProvince = companyFieldId ? (formData.get(`${companyFieldId}_shipping_province`) as string || "") : "";
+    const shippingPhone = companyFieldId ? (formData.get(`${companyFieldId}_shipping_phone`) as string || phone) : phone;
+
     console.log("Company info detected:", hasCompanyInfo);
     if (hasCompanyInfo) {
       console.log("Company details:", {
@@ -106,6 +115,10 @@ export async function action({ request }: { request: Request }) {
         billingStreet,
         billingCity,
         billingPostalCode,
+        shippingCountry,
+        shippingStreet,
+        shippingCity,
+        shippingPostalCode,
       });
     }
 
@@ -327,30 +340,11 @@ export async function action({ request }: { request: Request }) {
         isShopifyPlus = false;
       }
 
-      // Step 2: Create company location with billing address
+      // Step 2: Get the default company location and assign addresses
       if (company?.id) {
-        const companyLocationMutation = `
-          mutation companyLocationAssignAddress($locationId: ID!, $address: CompanyAddressInput!) {
-            companyLocationAssignAddress(locationId: $locationId, address: $address) {
-              addresses {
-                id
-                address1
-                address2
-                city
-                zip
-                province
-                country
-                phone
-              }
-              userErrors {
-                field
-                message
-              }
-            }
-          }
-        `;
-
-        // First, we need to get the default location ID for the company
+        console.log("📍 Getting default company location...");
+        
+        // Query for the default location (automatically created with company)
         const locationQuery = `
           query getCompanyLocations($companyId: ID!) {
             company(id: $companyId) {
@@ -366,32 +360,123 @@ export async function action({ request }: { request: Request }) {
           }
         `;
 
+        try {
         const locationQueryResult = await makeGraphQLRequest(locationQuery, { companyId: company.id });
-        const locationId = locationQueryResult.data?.company?.locations?.edges[0]?.node?.id;
+          const defaultLocation = locationQueryResult.data?.company?.locations?.edges[0]?.node;
 
-        if (locationId) {
-          const addressInput = {
-            locationId,
+          if (defaultLocation?.id) {
+            console.log("✅ Found default location:", defaultLocation);
+            
+            // Assign addresses to the default location
+            const assignAddressMutation = `
+              mutation companyLocationAssignAddress($locationId: ID!, $address: CompanyAddressInput!, $addressTypes: [CompanyAddressType!]!) {
+                companyLocationAssignAddress(locationId: $locationId, address: $address, addressTypes: $addressTypes) {
+                  addresses {
+                    id
+                    address1
+                    address2
+                    city
+                    zip
+                    province
+                    country
+                    phone
+                    formattedAddress
+                  }
+                  userErrors {
+                    field
+                    message
+                  }
+                }
+              }
+            `;
+
+            // Assign billing address
+            if (billingStreet && billingCity && billingCountry) {
+              const billingAddressInput = {
+                locationId: defaultLocation.id,
+                address: {
+                  address1: billingStreet,
+                  address2: billingApartment || "",
+                  city: billingCity,
+                  zip: billingPostalCode || "",
+                  countryCode: billingCountry,
+                  phone: billingPhone || "",
+                },
+                addressTypes: ["BILLING"],
+              };
+
+              console.log("Assigning billing address to location:", JSON.stringify(billingAddressInput, null, 2));
+              const billingResult = await makeGraphQLRequest(assignAddressMutation, billingAddressInput);
+              console.log("✅ Billing address assignment response:", JSON.stringify(billingResult, null, 2));
+
+              if (billingResult.data?.companyLocationAssignAddress?.userErrors?.length > 0) {
+                console.error("❌ Failed to assign billing address:", billingResult.data.companyLocationAssignAddress.userErrors);
+              } else if (billingResult.errors) {
+                console.error("❌ GraphQL errors assigning billing address:", billingResult.errors);
+              } else {
+                console.log("✅ Billing address assigned successfully!");
+              }
+            }
+
+            // Assign shipping address
+            if (shippingStreet && shippingCity && shippingCountry) {
+              const shippingAddressInput = {
+                locationId: defaultLocation.id,
+                address: {
+                  address1: shippingStreet,
+                  address2: shippingApartment || "",
+                  city: shippingCity,
+                  zip: shippingPostalCode || "",
+                  countryCode: shippingCountry,
+                  phone: shippingPhone || "",
+                },
+                addressTypes: ["SHIPPING"],
+              };
+
+              console.log("Assigning shipping address to location:", JSON.stringify(shippingAddressInput, null, 2));
+              const shippingResult = await makeGraphQLRequest(assignAddressMutation, shippingAddressInput);
+              console.log("✅ Shipping address assignment response:", JSON.stringify(shippingResult, null, 2));
+
+              if (shippingResult.data?.companyLocationAssignAddress?.userErrors?.length > 0) {
+                console.error("❌ Failed to assign shipping address:", shippingResult.data.companyLocationAssignAddress.userErrors);
+              } else if (shippingResult.errors) {
+                console.error("❌ GraphQL errors assigning shipping address:", shippingResult.errors);
+              } else {
+                console.log("✅ Shipping address assigned successfully!");
+              }
+            } else if (billingStreet && billingCity && billingCountry) {
+              // If no separate shipping address, use billing address as shipping too
+              const shippingAddressInput = {
+                locationId: defaultLocation.id,
             address: {
               address1: billingStreet,
-              address2: billingApartment || undefined,
+                  address2: billingApartment || "",
               city: billingCity,
-              zip: billingPostalCode,
-              province: billingProvince || undefined,
-              country: billingCountry,
-              phone: billingPhone || undefined,
-            },
-          };
+                  zip: billingPostalCode || "",
+                  countryCode: billingCountry,
+                  phone: billingPhone || "",
+                },
+                addressTypes: ["SHIPPING"],
+              };
 
-          console.log("Assigning address to company location:", addressInput);
-          const locationResult = await makeGraphQLRequest(companyLocationMutation, addressInput);
-          console.log("✅ Company location response:", JSON.stringify(locationResult, null, 2));
+              console.log("Assigning billing address as shipping address to location:", JSON.stringify(shippingAddressInput, null, 2));
+              const shippingResult = await makeGraphQLRequest(assignAddressMutation, shippingAddressInput);
+              console.log("✅ Shipping address assignment response:", JSON.stringify(shippingResult, null, 2));
 
-          if (locationResult.data?.companyLocationAssignAddress?.userErrors?.length > 0) {
-            console.warn("⚠️ Warning: Failed to assign address to company location:", locationResult.data.companyLocationAssignAddress.userErrors);
+              if (shippingResult.data?.companyLocationAssignAddress?.userErrors?.length > 0) {
+                console.error("❌ Failed to assign shipping address:", shippingResult.data.companyLocationAssignAddress.userErrors);
+              } else if (shippingResult.errors) {
+                console.error("❌ GraphQL errors assigning shipping address:", shippingResult.errors);
           } else {
-            companyLocation = locationResult.data?.companyLocationAssignAddress?.addresses?.[0];
+                console.log("✅ Shipping address (from billing) assigned successfully!");
+              }
+            }
+
+            companyLocation = defaultLocation;
+            console.log("✅ Company location addresses assigned successfully!");
           }
+        } catch (error) {
+          console.error("❌ Error assigning location addresses:", error);
         }
       }
 
@@ -429,12 +514,26 @@ export async function action({ request }: { request: Request }) {
       if (!isShopifyPlus) {
         customerNote += `\n\nCompany Information:\n`;
         customerNote += `- Company: ${companyName}\n`;
+        
+        // Billing Address
+        customerNote += `\nBilling Address:\n`;
         if (billingStreet) customerNote += `- Address: ${billingStreet}${billingApartment ? `, ${billingApartment}` : ''}\n`;
         if (billingCity) customerNote += `- City: ${billingCity}\n`;
         if (billingProvince) customerNote += `- State/Province: ${billingProvince}\n`;
         if (billingPostalCode) customerNote += `- Postal Code: ${billingPostalCode}\n`;
         if (billingCountry) customerNote += `- Country: ${billingCountry}\n`;
         if (billingPhone) customerNote += `- Phone: ${billingPhone}\n`;
+        
+        // Shipping Address (if provided)
+        if (shippingStreet && shippingCity && shippingCountry) {
+          customerNote += `\nShipping Address:\n`;
+          if (shippingStreet) customerNote += `- Address: ${shippingStreet}${shippingApartment ? `, ${shippingApartment}` : ''}\n`;
+          if (shippingCity) customerNote += `- City: ${shippingCity}\n`;
+          if (shippingProvince) customerNote += `- State/Province: ${shippingProvince}\n`;
+          if (shippingPostalCode) customerNote += `- Postal Code: ${shippingPostalCode}\n`;
+          if (shippingCountry) customerNote += `- Country: ${shippingCountry}\n`;
+          if (shippingPhone) customerNote += `- Phone: ${shippingPhone}\n`;
+        }
       }
 
       const customerInput: any = {
@@ -446,9 +545,13 @@ export async function action({ request }: { request: Request }) {
         tags: [`form-${code}`, "form-submission", "company-customer", `company:${companyName}`],
       };
 
-      // Add address with company information if not Shopify Plus
-      if (!isShopifyPlus && billingStreet && billingCity && billingCountry) {
-        customerInput.addresses = [{
+      // Add addresses with company information to customer profile
+      // This applies to both Shopify Plus and non-Plus stores
+      const customerAddresses = [];
+      
+      // Add billing address
+      if (billingStreet && billingCity && billingCountry) {
+        customerAddresses.push({
           address1: billingStreet,
           address2: billingApartment || undefined,
           city: billingCity,
@@ -457,14 +560,52 @@ export async function action({ request }: { request: Request }) {
           country: billingCountry,
           company: companyName,
           phone: billingPhone || phone || undefined,
-        }];
+        });
+      }
+      
+      // Add shipping address if provided
+      if (shippingStreet && shippingCity && shippingCountry) {
+        customerAddresses.push({
+          address1: shippingStreet,
+          address2: shippingApartment || undefined,
+          city: shippingCity,
+          province: shippingProvince || undefined,
+          zip: shippingPostalCode || undefined,
+          country: shippingCountry,
+          company: companyName,
+          phone: shippingPhone || phone || undefined,
+        });
+      }
+      
+      if (customerAddresses.length > 0) {
+        customerInput.addresses = customerAddresses;
       }
 
       console.log("Creating customer with:", JSON.stringify(customerInput, null, 2));
       const customerResult = await makeGraphQLRequest(customerMutation, { input: customerInput });
       console.log("✅ Customer creation response:", JSON.stringify(customerResult, null, 2));
 
+      // Check for GraphQL errors
+      if (customerResult.errors) {
+        console.error("❌ GraphQL errors creating customer:", customerResult.errors);
+        return json(
+          {
+            error: "Failed to create customer",
+            details: customerResult.errors,
+          },
+          {
+            status: 400,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      // Check for user errors
       if (customerResult.data?.customerCreate?.userErrors?.length > 0) {
+        console.error("❌ Customer creation user errors:", customerResult.data.customerCreate.userErrors);
         return json(
           {
             error: "Failed to create customer",
@@ -481,9 +622,36 @@ export async function action({ request }: { request: Request }) {
       }
 
       customer = customerResult.data?.customerCreate?.customer;
+      
+      if (!customer || !customer.id) {
+        console.error("❌ Customer was not created - no customer object in response");
+        console.error("Response data:", customerResult.data);
+        return json(
+          {
+            error: "Failed to create customer",
+            details: "No customer object returned from API",
+            response: customerResult.data,
+          },
+          {
+            status: 500,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+      
+      console.log("✅ Customer created successfully with ID:", customer.id);
 
-      // Step 4: Create company contact to associate customer with company
+      // Step 4: Create company contact and assign to location
       if (company?.id && customer?.id) {
+        console.log("👤 Creating company contact...");
+        console.log("Company ID:", company.id);
+        console.log("Customer ID:", customer.id);
+        console.log("Company Location:", companyLocation);
+        
+        try {
         const companyContactMutation = `
           mutation companyContactCreate($companyId: ID!, $input: CompanyContactInput!) {
             companyContactCreate(companyId: $companyId, input: $input) {
@@ -492,7 +660,9 @@ export async function action({ request }: { request: Request }) {
                 customer {
                   id
                   email
-                }
+                    firstName
+                    lastName
+                  }
               }
               userErrors {
                 field
@@ -502,6 +672,7 @@ export async function action({ request }: { request: Request }) {
           }
         `;
 
+          // Create contact without role assignment first
         const contactInput = {
           companyId: company.id,
           input: {
@@ -509,19 +680,146 @@ export async function action({ request }: { request: Request }) {
           },
         };
 
-        console.log("Creating company contact:", contactInput);
+          console.log("Creating company contact with input:", JSON.stringify(contactInput, null, 2));
         const contactResult = await makeGraphQLRequest(companyContactMutation, contactInput);
         console.log("✅ Company contact response:", JSON.stringify(contactResult, null, 2));
 
         if (contactResult.data?.companyContactCreate?.userErrors?.length > 0) {
-          console.warn("⚠️ Warning: Failed to create company contact:", contactResult.data.companyContactCreate.userErrors);
+            console.error("❌ Failed to create company contact:", contactResult.data.companyContactCreate.userErrors);
+          } else if (contactResult.errors) {
+            console.error("❌ GraphQL errors creating company contact:", contactResult.errors);
+          } else {
+            const companyContact = contactResult.data?.companyContactCreate?.companyContact;
+            console.log("✅ Company contact created successfully:", companyContact);
+            
+            // Now assign the contact to the location with a role
+            if (companyContact?.id && companyLocation?.id) {
+              console.log("👤 Assigning contact to location with BUYER role...");
+              
+              const assignContactMutation = `
+                mutation companyContactAssignRoles($companyContactId: ID!, $rolesToAssign: [CompanyContactRoleAssign!]!) {
+                  companyContactAssignRoles(companyContactId: $companyContactId, rolesToAssign: $rolesToAssign) {
+                    roleAssignments {
+                      id
+                      role {
+                        id
+                        name
+                      }
+                      location {
+                        id
+                        name
+                      }
+                    }
+                    userErrors {
+                      field
+                      message
+                    }
+                  }
+                }
+              `;
+
+              const roleInput = {
+                companyContactId: companyContact.id,
+                rolesToAssign: [
+                  {
+                    companyLocationId: companyLocation.id,
+                    role: "BUYER",
+                  },
+                ],
+              };
+
+              console.log("Assigning role with input:", JSON.stringify(roleInput, null, 2));
+              
+              try {
+                const roleResult = await makeGraphQLRequest(assignContactMutation, roleInput);
+                console.log("✅ Contact role assignment response:", JSON.stringify(roleResult, null, 2));
+
+                if (roleResult.data?.companyContactAssignRoles?.userErrors?.length > 0) {
+                  console.error("❌ Failed to assign contact role:", roleResult.data.companyContactAssignRoles.userErrors);
+                  // Log each error in detail
+                  roleResult.data.companyContactAssignRoles.userErrors.forEach((err: any) => {
+                    console.error(`  - Field: ${err.field}, Message: ${err.message}`);
+                  });
+                } else if (roleResult.errors) {
+                  console.error("❌ GraphQL errors assigning contact role:", roleResult.errors);
+                  roleResult.errors.forEach((err: any) => {
+                    console.error(`  - ${err.message}`);
+                  });
+                } else {
+                  const assignments = roleResult.data?.companyContactAssignRoles?.roleAssignments;
+                  console.log("✅ Customer successfully assigned as contact person to company location!");
+                  console.log("   Role assignments:", assignments);
+                }
+              } catch (roleError) {
+                console.error("❌ Exception during role assignment:", roleError);
+              }
+            } else {
+              console.warn("⚠️ Could not assign role - missing company contact ID or location ID");
+              console.warn("Company Contact ID:", companyContact?.id);
+              console.warn("Company Location ID:", companyLocation?.id);
+            }
+
+            // Step 6: Set this contact as the company's main contact
+            if (companyContact?.id && company?.id) {
+              console.log("👤 Setting customer as company main contact...");
+              
+              const updateCompanyMutation = `
+                mutation companyUpdate($companyId: ID!, $input: CompanyInput!) {
+                  companyUpdate(companyId: $companyId, input: $input) {
+                    company {
+                      id
+                      name
+                      mainContact {
+                        id
+                        customer {
+                          id
+                          email
+                          firstName
+                          lastName
+                        }
+                      }
+                    }
+                    userErrors {
+                      field
+                      message
+                    }
+                  }
+                }
+              `;
+
+              const updateInput = {
+                companyId: company.id,
+                input: {
+                  mainContactId: companyContact.id,
+                },
+              };
+
+              console.log("Setting main contact with input:", JSON.stringify(updateInput, null, 2));
+              const updateResult = await makeGraphQLRequest(updateCompanyMutation, updateInput);
+              console.log("✅ Company update response:", JSON.stringify(updateResult, null, 2));
+
+              if (updateResult.data?.companyUpdate?.userErrors?.length > 0) {
+                console.error("❌ Failed to set main contact:", updateResult.data.companyUpdate.userErrors);
+              } else if (updateResult.errors) {
+                console.error("❌ GraphQL errors setting main contact:", updateResult.errors);
+              } else {
+                console.log("✅ Customer successfully set as company main contact!");
+              }
+            }
+          }
+        } catch (error) {
+          console.error("❌ Error in company contact creation/assignment:", error);
         }
+      } else {
+        console.warn("⚠️ Skipping company contact creation - missing company ID or customer ID");
+        console.warn("Company ID:", company?.id);
+        console.warn("Customer ID:", customer?.id);
       }
 
       // Build success message based on what was created
       let successMessage = "Form submitted successfully!";
       if (isShopifyPlus && company) {
-        successMessage = "Customer, company, and company location created successfully!";
+        successMessage = "Customer created and assigned as company main contact with location access!";
       } else if (hasCompanyInfo) {
         successMessage = "Customer created with company information! (Note: B2B company creation requires Shopify Plus. Company details saved in customer profile.)";
       }

@@ -28,7 +28,7 @@ scopes = "write_products,write_customers,read_customers,write_companies,read_com
 redirect_urls = [ "https://example.com/api/auth" ]
 
 [app_proxy]
-url = " https://buf-follows-max-convertible.trycloudflare.com"
+url = "https://tahoe-adelaide-messaging-wheels.trycloudflare.com"
 subpath = "form"
 prefix = "apps"
 
