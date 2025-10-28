@@ -10,7 +10,7 @@ generator client {
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "sqlite"
-  url      = "file:dev.sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
@@ -38,6 +38,7 @@ model Form {
   title       String
   description String?
   fields      String   // JSON string of fields array
+  customCss   String?  // Custom CSS for form styling
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
