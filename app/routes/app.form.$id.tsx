@@ -39,7 +39,8 @@ type FieldType =
   | "textarea"
   | "select"
   | "checkbox"
-  | "company";
+  | "company"
+  | "html";
 
 interface FormField {
   id: string;
@@ -48,6 +49,7 @@ interface FormField {
   placeholder?: string;
   required: boolean;
   options?: string[];
+  htmlContent?: string; // For HTML field type
 }
 
 const fieldTypes = [
@@ -56,6 +58,7 @@ const fieldTypes = [
   { type: "email" as FieldType, label: "Email", icon: EmailIcon },
   { type: "phone" as FieldType, label: "Phone", icon: PhoneIcon },
   { type: "company" as FieldType, label: "Company", icon: TextIcon },
+  { type: "html" as FieldType, label: "Custom HTML", icon: TextIcon },
 ];
 
 // List of countries for the company field
@@ -285,6 +288,7 @@ export default function FormPage() {
       placeholder: "",
       required: false,
       options: type === "select" ? ["Option 1", "Option 2"] : undefined,
+      htmlContent: type === "html" ? "<p>Add your custom HTML here</p>" : undefined,
     };
     setFields([...fields, newField]);
   };
@@ -517,6 +521,19 @@ export default function FormPage() {
               </BlockStack>
             )}
           </BlockStack>
+        );
+      case "html":
+        return (
+          <div style={{ padding: "1rem", backgroundColor: "#f9fafb", borderRadius: "0.5rem", border: "1px dashed #d1d5db" }}>
+            <Text as="p" variant="bodySm" tone="subdued" alignment="center">
+              Custom HTML Content (Preview not available in editor)
+            </Text>
+            {field.htmlContent && (
+              <div style={{ marginTop: "0.5rem", fontSize: "0.875rem", color: "#6b7280", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                {field.htmlContent.substring(0, 100)}{field.htmlContent.length > 100 ? "..." : ""}
+              </div>
+            )}
+          </div>
         );
       default:
         return null;

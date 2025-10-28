@@ -1,6 +1,14 @@
 {% assign form_code = block.settings.form_code %}
+{% assign custom_css = block.settings.custom_css %}
 
-<div class="custom-form-wrapper" style="padding: 2rem; max-width: 800px; margin: 0 auto;">
+<!-- Inject Custom CSS from Theme Customizer -->
+{% if custom_css != blank %}
+  <style>
+    {{ custom_css }}
+  </style>
+{% endif %}
+
+<div class="form-wrapper custom-form-wrapper" style="padding: 2rem; max-width: 800px; margin: 0 auto;">
   <div id="form-container-{{ block.id }}" data-form-code="{{ form_code }}">
     <div class="loading">Loading form...</div>
   </div>
@@ -524,7 +532,7 @@
 
 {% schema %}
 {
-  "name": "Custom Form",
+  "name": "ShopiForm",
   "target": "section",
   "settings": [
     {
@@ -532,6 +540,12 @@
       "id": "form_code",
       "label": "Form Code",
       "info": "Enter the 5-digit form code from your admin panel"
+    },
+    {
+      "type": "html",
+      "id": "custom_css",
+      "label": "Custom CSS",
+      "info": "Add custom CSS"
     }
   ]
 }
