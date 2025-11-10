@@ -23,6 +23,8 @@ import {
   Modal,
   PageActions,
   Banner,
+  Tabs,
+  Box,
 } from "@shopify/polaris";
 import {
   TextIcon,
@@ -231,12 +233,12 @@ export default function FormPage() {
   const getDefaultCountry = () => {
     try {
       // Fallback to browser locale
-      const locale = navigator.language || 'en-US';
-      const countryCode = locale.split('-')[1]?.toUpperCase() || 'US';
-      const countryExists = countries.some(c => c.value === countryCode);
-      return countryExists ? countryCode : 'US';
+      const locale = navigator.language || "en-US";
+      const countryCode = locale.split("-")[1]?.toUpperCase() || "US";
+      const countryExists = countries.some((c) => c.value === countryCode);
+      return countryExists ? countryCode : "US";
     } catch {
-      return 'US';
+      return "US";
     }
   };
 
@@ -244,24 +246,26 @@ export default function FormPage() {
   const [formTitle, setFormTitle] = useState("Untitled Form");
   const [formDescription, setFormDescription] = useState("");
   const [shippingSameAsBilling, setShippingSameAsBilling] = useState(true);
-  const [selectedBillingCountry, setSelectedBillingCountry] = useState(getDefaultCountry());
-  const [selectedShippingCountry, setSelectedShippingCountry] = useState(getDefaultCountry());
+  const [selectedBillingCountry, setSelectedBillingCountry] =
+    useState(getDefaultCountry());
+  const [selectedShippingCountry, setSelectedShippingCountry] =
+    useState(getDefaultCountry());
 
   // Detect country from IP on mount
   useEffect(() => {
     async function detectCountry() {
       try {
-        const response = await fetch('https://ipapi.co/country/');
+        const response = await fetch("https://ipapi.co/country/");
         if (response.ok) {
           const countryCode = (await response.text()).trim().toUpperCase();
-          const countryExists = countries.some(c => c.value === countryCode);
+          const countryExists = countries.some((c) => c.value === countryCode);
           if (countryExists) {
             setSelectedBillingCountry(countryCode);
             setSelectedShippingCountry(countryCode);
           }
         }
       } catch (error) {
-        console.log('Could not detect country from IP, using browser locale');
+        console.log("Could not detect country from IP, using browser locale");
       }
     }
     detectCountry();
@@ -277,11 +281,13 @@ export default function FormPage() {
   }, [loaderData]);
 
   const addField = (type: FieldType) => {
-    const fieldTypeConfig = fieldTypes.find(ft => ft.type === type);
+    const fieldTypeConfig = fieldTypes.find((ft) => ft.type === type);
     const newField: FormField = {
       id: `field-${Date.now()}`,
       type,
-      label: fieldTypeConfig?.label || `${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
+      label:
+        fieldTypeConfig?.label ||
+        `${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
       placeholder: "",
       required: false,
       options: type === "select" ? ["Option 1", "Option 2"] : undefined,
@@ -356,31 +362,38 @@ export default function FormPage() {
       case "checkbox":
         return <Checkbox label={field.label} />;
       case "company":
-        const billingCountryCode = countries.find(c => c.value === selectedBillingCountry)?.code || "+1";
-        const shippingCountryCode = countries.find(c => c.value === selectedShippingCountry)?.code || "+1";
-        
+        const billingCountryCode =
+          countries.find((c) => c.value === selectedBillingCountry)?.code ||
+          "+1";
+        const shippingCountryCode =
+          countries.find((c) => c.value === selectedShippingCountry)?.code ||
+          "+1";
+
         return (
           <BlockStack gap="400">
             {/* Billing Address Section */}
             <Text as="h3" variant="headingMd">
               Billing Address
             </Text>
-            
+
             <Select
               label="Country"
-              options={countries.map(c => ({ label: c.label, value: c.value }))}
+              options={countries.map((c) => ({
+                label: c.label,
+                value: c.value,
+              }))}
               value={selectedBillingCountry}
               onChange={setSelectedBillingCountry}
               requiredIndicator={field.required}
             />
-            
+
             <TextField
               label="Company Name"
               placeholder="Enter company name"
               autoComplete="off"
               requiredIndicator={field.required}
             />
-            
+
             <InlineGrid columns={2} gap="200">
               <TextField
                 label="Street & House Number"
@@ -388,14 +401,14 @@ export default function FormPage() {
                 autoComplete="off"
                 requiredIndicator={field.required}
               />
-              
+
               <TextField
                 label="Apartment, Suite, etc."
                 placeholder="Apt 4B"
                 autoComplete="off"
               />
             </InlineGrid>
-            
+
             <InlineGrid columns={2} gap="200">
               <TextField
                 label="Postal Code"
@@ -403,7 +416,7 @@ export default function FormPage() {
                 autoComplete="off"
                 requiredIndicator={field.required}
               />
-              
+
               <TextField
                 label="City"
                 placeholder="New York"
@@ -411,7 +424,7 @@ export default function FormPage() {
                 requiredIndicator={field.required}
               />
             </InlineGrid>
-            
+
             <InlineGrid columns={["oneThird", "twoThirds"]} gap="200">
               <TextField
                 label="Country Code"
@@ -419,7 +432,7 @@ export default function FormPage() {
                 disabled
                 autoComplete="off"
               />
-              
+
               <TextField
                 label="Billing Phone"
                 type="tel"
@@ -428,45 +441,48 @@ export default function FormPage() {
                 requiredIndicator={field.required}
               />
             </InlineGrid>
-            
+
             <TextField
               label="Company Tax ID"
               placeholder="Enter tax ID"
               autoComplete="off"
               requiredIndicator={field.required}
             />
-            
+
             <Divider />
-            
+
             {/* Shipping Same as Billing Checkbox */}
             <Checkbox
               label="Shipping address same as billing"
               checked={shippingSameAsBilling}
               onChange={setShippingSameAsBilling}
             />
-            
+
             {/* Shipping Address Section - Only shown if checkbox is unchecked */}
             {!shippingSameAsBilling && (
               <BlockStack gap="400">
                 <Text as="h3" variant="headingMd">
                   Shipping Address
                 </Text>
-                
+
                 <Select
                   label="Country"
-                  options={countries.map(c => ({ label: c.label, value: c.value }))}
+                  options={countries.map((c) => ({
+                    label: c.label,
+                    value: c.value,
+                  }))}
                   value={selectedShippingCountry}
                   onChange={setSelectedShippingCountry}
                   requiredIndicator={field.required}
                 />
-                
+
                 <TextField
                   label="Company Name"
                   placeholder="Enter company name"
                   autoComplete="off"
                   requiredIndicator={field.required}
                 />
-                
+
                 <InlineGrid columns={2} gap="200">
                   <TextField
                     label="Street & House Number"
@@ -474,14 +490,14 @@ export default function FormPage() {
                     autoComplete="off"
                     requiredIndicator={field.required}
                   />
-                  
+
                   <TextField
                     label="Apartment, Suite, etc."
                     placeholder="Apt 4B"
                     autoComplete="off"
                   />
                 </InlineGrid>
-                
+
                 <InlineGrid columns={2} gap="200">
                   <TextField
                     label="Postal Code"
@@ -489,7 +505,7 @@ export default function FormPage() {
                     autoComplete="off"
                     requiredIndicator={field.required}
                   />
-                  
+
                   <TextField
                     label="City"
                     placeholder="New York"
@@ -497,7 +513,7 @@ export default function FormPage() {
                     requiredIndicator={field.required}
                   />
                 </InlineGrid>
-                
+
                 <InlineGrid columns={["oneThird", "twoThirds"]} gap="200">
                   <TextField
                     label="Country Code"
@@ -505,7 +521,7 @@ export default function FormPage() {
                     disabled
                     autoComplete="off"
                   />
-                  
+
                   <TextField
                     label="Shipping Phone"
                     type="tel"
@@ -528,6 +544,7 @@ export default function FormPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [draggedFieldId, setDraggedFieldId] = useState<string | null>(null);
   const selectedField = fields.find((f) => f.id === selectedFieldId);
+  const [selectedTab, setSelectedTab] = useState(0);
 
   const handleAddField = (value: string) => {
     if (value) {
@@ -619,7 +636,8 @@ export default function FormPage() {
         <div style={{ marginBottom: "1rem" }}>
           <Banner tone="info">
             <Text as="p" variant="bodyMd">
-              Form Code: <strong>{loaderData.code}</strong> - You this code in your storefront customizer
+              Form Code: <strong>{loaderData.code}</strong> - You this code in
+              your storefront customizer
             </Text>
           </Banner>
         </div>
@@ -652,8 +670,43 @@ export default function FormPage() {
             />
 
             <Divider />
+            <Box
+              padding="0"
+              borderRadius="200"
+              borderWidth="0"
+              background="bg-fill-secondary"
+            >
+              <Tabs
+                tabs={[
+                  { id: "tab-customer", content: "Customer" },
+                  { id: "tab-company", content: "Company and Customer" },
+                ]}
+                selected={selectedTab}
+                onSelect={setSelectedTab}
+                fitted
+              ></Tabs>
+            </Box>
+            <Divider />
 
             {/* Add Field Dropdown */}
+            {selectedTab === 0 && (
+              <Select
+                label="Add a field"
+                options={[
+                  { label: "Select a field type...", value: "" },
+                  ...fieldTypes.filter((ft) => ft.type !== "company").map(({ type, label }) => ({
+                    label,
+                    value: type,
+                  })),
+                ]}
+                value={fieldTypeToAdd}
+                onChange={(value) => {
+                  setFieldTypeToAdd(value);
+                  handleAddField(value);
+                }}
+              />
+            )}
+            {selectedTab === 1 && (
             <Select
               label="Add a field"
               options={[
@@ -669,7 +722,7 @@ export default function FormPage() {
                 handleAddField(value);
               }}
             />
-
+            )}
             {/* Field List */}
             {fields.length === 0 ? (
               <BlockStack gap="200" inlineAlign="center">
@@ -797,16 +850,17 @@ export default function FormPage() {
                 }
                 autoComplete="off"
               />
-              {selectedField.type !== "checkbox" && selectedField.type !== "company" && (
-                <TextField
-                  label="Placeholder"
-                  value={selectedField.placeholder || ""}
-                  onChange={(value) =>
-                    updateField(selectedField.id, { placeholder: value })
-                  }
-                  autoComplete="off"
-                />
-              )}
+              {selectedField.type !== "checkbox" &&
+                selectedField.type !== "company" && (
+                  <TextField
+                    label="Placeholder"
+                    value={selectedField.placeholder || ""}
+                    onChange={(value) =>
+                      updateField(selectedField.id, { placeholder: value })
+                    }
+                    autoComplete="off"
+                  />
+                )}
               <Checkbox
                 label="Required"
                 checked={selectedField.required}
